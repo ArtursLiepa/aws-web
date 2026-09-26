@@ -35,23 +35,29 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::849381698744:role/HitHubSSM-role
           aws-region: eu-north-1
+
       - name: Deploy to EC2 via SSM
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           aws ssm send-command \
           --instance-ids "i-01f7f7498fb2a63ba" \
           --document-name "AWS-RunShellScript" \
-          --parameters 'commands=[
-            "sudo docker pull arturs85/frontend:latest",
-            "sudo docker stop aws-web-container || true",
-            "sudo docker rm aws-web-container || true",
-            "sudo docker run -d -p 80:80 --name aws-web-container arturs85/frontend:latest"
-          ]' \
+          --parameters "commands=[
+            \"echo '$DOCKERHUB_TOKEN' | sudo docker login -u '$DOCKERHUB_USERNAME' --password-stdin\",
+            \"sudo docker pull arturs85/frontend:latest\",
+            \"sudo docker stop aws-web-container || true\",
+            \"sudo docker rm aws-web-container || true\",
+            \"sudo docker run -d -p 80:80 --name aws-web-container arturs85/frontend:latest\"
+          ]" \
           --region eu-north-1
           
      
